@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武将データベース ｜ 信長の野望・新生PK 完全攻略情報まとめ</title>
+  <meta name="description" content="信長の野望・新生PK の武将データベース。主要武将の統率・武勇・知略・政治の能力値を勢力別・ソート機能付きで一覧表示。">
+  <link rel="stylesheet" href="../css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== DB Page Specific ===== */
+    .db-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+      align-items: center;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px;
+      border: 2px solid var(--gold);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: .95rem;
+      background: var(--white);
+      color: var(--brown);
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--red); }
+
+    .filter-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .filter-btn {
+      padding: 7px 14px;
+      border: 1px solid var(--gold);
+      background: var(--white);
+      color: var(--brown);
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: .82rem;
+      transition: all .2s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--red-dark);
+      color: var(--gold-light);
+      border-color: var(--red-dark);
+    }
+
+    /* Table */
+    .busho-table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      box-shadow: 0 3px 16px rgba(0,0,0,.1);
+    }
+    table.busho-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      font-size: .88rem;
+    }
+    .busho-table thead th {
+      background: var(--red-dark);
+      color: var(--gold-light);
+      padding: 12px 14px;
+      text-align: center;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .busho-table thead th:hover { background: var(--red); }
+    .busho-table thead th.sort-asc::after  { content: " ▲"; font-size:.7em; }
+    .busho-table thead th.sort-desc::after { content: " ▼"; font-size:.7em; }
+
+    .busho-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--beige-dark);
+      text-align: center;
+    }
+    .busho-table td.name-col {
+      text-align: left;
+      font-weight: 700;
+      color: var(--brown);
+      white-space: nowrap;
+    }
+    .busho-table td.clan-col {
+      white-space: nowrap;
+      font-size: .8rem;
+    }
+    .busho-table tr:nth-child(even) td { background: #faf6ef; }
+    .busho-table tr:hover td { background: #f0e8d5; }
+    .busho-table tr.hidden { display: none; }
+
+    /* Stat bar */
+    .stat-val {
+      display: inline-block;
+      min-width: 36px;
+      font-weight: 700;
+    }
+    .stat-100 { color: #8b0000; }
+    .stat-90  { color: #c0392b; }
+    .stat-80  { color: #d4843a; }
+    .stat-70  { color: #6b8e23; }
+    .stat-low { color: #888; }
+
+    .total-val { font-weight: 700; color: var(--red-dark); }
+
+    .clan-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: .75rem;
+      border: 1px solid currentColor;
+    }
+
+    .result-count {
+      font-size: .88rem;
+      color: #6b4e36;
+      margin-bottom: 12px;
+    }
+
+    /* Clan colors */
+    .clan-oda    { color: #8b1a1a; border-color: #8b1a1a; background: #fdf0f0; }
+    .clan-takeda { color: #1a4a8b; border-color: #1a4a8b; background: #f0f4fd; }
+    .clan-uesugi { color: #2d7a2d; border-color: #2d7a2d; background: #f0fdf0; }
+    .clan-tokugawa { color: #6b3d00; border-color: #6b3d00; background: #fdf5e6; }
+    .clan-toyotomi { color: #8b6914; border-color: #8b6914; background: #fdfae6; }
+    .clan-hojo   { color: #4a4a8b; border-color: #4a4a8b; background: #f4f4fd; }
+    .clan-mori   { color: #1a6b6b; border-color: #1a6b6b; background: #f0fdfd; }
+    .clan-shimazu { color: #4a1a6b; border-color: #4a1a6b; background: #f8f0fd; }
+    .clan-imagawa { color: #6b1a4a; border-color: #6b1a4a; background: #fdf0f8; }
+    .clan-date   { color: #1a5a3a; border-color: #1a5a3a; background: #f0fdf6; }
+    .clan-other  { color: #555; border-color: #555; background: #f5f5f5; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <span class="kamon">将</span>
+    <h1 class="site-title">武将データベース</h1>
+    <p class="site-subtitle">信長の野望・新生PK ― 主要武将 能力値一覧</p>
+    <hr class="header-rule">
+  </div>
+</header>
+
+<nav class="main-nav">
+  <div class="nav-inner">
+    <a href="../index.html">トップ</a>
+    <a href="overview.html">ゲーム概要</a>
+    <a href="systems.html">システム解説</a>
+    <a href="scenarios.html">シナリオ一覧</a>
+    <a href="busho.html">武将DB</a>
+    <a href="traits.html">武将特性</a>
+    <a href="guide.html">攻略ガイド</a>
+    <a href="editions.html">エディション</a>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">主要武将 能力値データベース</h2>
+    <hr class="divider">
+
+    <div class="callout">
+      <div class="callout-title">データについて</div>
+      本ゲームには<strong>2,200人以上</strong>の武将が登場します。
+      本ページでは主要武将約150名のデータを掲載しています。
+      能力値は「統率・武勇・知略・政治（政務）」の4項目（各最大100）。
+      列ヘッダーをクリックするとソートできます。勢力ボタンや検索で絞り込み可能です。
+    </div>
+
+    <!-- Controls -->
+    <div class="db-controls mt-32">
+      <input type="text" class="search-box" id="searchBox" placeholder="武将名・勢力名で検索..." oninput="filterTable()">
+    </div>
+    <div class="filter-btns" id="filterBtns">
+      <button class="filter-btn active" onclick="setFilter('all', this)">全勢力</button>
+      <button class="filter-btn" onclick="setFilter('織田家', this)">織田家</button>
+      <button class="filter-btn" onclick="setFilter('武田家', this)">武田家</button>
+      <button class="filter-btn" onclick="setFilter('上杉家', this)">上杉家</button>
+      <button class="filter-btn" onclick="setFilter('徳川家', this)">徳川家</button>
+      <button class="filter-btn" onclick="setFilter('豊臣家', this)">豊臣家</button>
+      <button class="filter-btn" onclick="setFilter('北条家', this)">北条家</button>
+      <button class="filter-btn" onclick="setFilter('毛利家', this)">毛利家</button>
+      <button class="filter-btn" onclick="setFilter('島津家', this)">島津家</button>
+      <button class="filter-btn" onclick="setFilter('今川家', this)">今川家</button>
+      <button class="filter-btn" onclick="setFilter('伊達家', this)">伊達家</button>
+      <button class="filter-btn" onclick="setFilter('その他', this)">その他</button>
+    </div>
+
+    <p class="result-count mt-16" id="resultCount"></p>
+
+    <div class="busho-table-wrap mt-16">
+      <table class="busho-table" id="bushoTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">武将名</th>
+            <th onclick="sortTable(1)">勢力</th>
+            <th onclick="sortTable(2)">統率</th>
+            <th onclick="sortTable(3)">武勇</th>
+            <th onclick="sortTable(4)">知略</th>
+            <th onclick="sortTable(5)">政治</th>
+            <th onclick="sortTable(6)">合計</th>
+            <th>主な特性</th>
+          </tr>
+        </thead>
+        <tbody id="bushoTbody">
+          <!-- ===== 織田家 ===== -->
+          <tr data-clan="織田家"><td class="name-col">織田信長</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-90">99</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-90">95</span></td><td><span class="stat-val stat-100">100</span></td><td class="total-val">382</td><td>主人公・覇王</td></tr>
+          <tr data-clan="織田家"><td class="name-col">織田信秀</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-80">81</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-80">84</span></td><td class="total-val">334</td><td>先駆け・武略</td></tr>
+          <tr data-clan="織田家"><td class="name-col">織田信忠</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">74</span></td><td><span class="stat-val stat-70">75</span></td><td class="total-val">315</td><td>嫡流・指揮</td></tr>
+          <tr data-clan="織田家"><td class="name-col">柴田勝家</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-90">94</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-70">72</span></td><td class="total-val">324</td><td>猛将・鬼柴田</td></tr>
+          <tr data-clan="織田家"><td class="name-col">前田利家</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-70">71</span></td><td><span class="stat-val stat-70">79</span></td><td class="total-val">324</td><td>槍の又左・仁将</td></tr>
+          <tr data-clan="織田家"><td class="name-col">明智光秀</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-70">77</span></td><td><span class="stat-val stat-90">94</span></td><td><span class="stat-val stat-90">93</span></td><td class="total-val">350</td><td>謀反・連歌師</td></tr>
+          <tr data-clan="織田家"><td class="name-col">丹羽長秀</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-80">81</span></td><td><span class="stat-val stat-80">88</span></td><td class="total-val">330</td><td>作事・仁将</td></tr>
+          <tr data-clan="織田家"><td class="name-col">滝川一益</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-70">72</span></td><td class="total-val">319</td><td>先駆け・遊軍</td></tr>
+          <tr data-clan="織田家"><td class="name-col">佐久間信盛</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-70">74</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">292</td><td>守備・籠城</td></tr>
+          <tr data-clan="織田家"><td class="name-col">池田恒興</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-70">73</span></td><td><span class="stat-val stat-70">70</span></td><td class="total-val">302</td><td>乳兄弟・突撃</td></tr>
+          <tr data-clan="織田家"><td class="name-col">蜂須賀正勝</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-70">73</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-70">76</span></td><td class="total-val">312</td><td>野伏・奇襲</td></tr>
+          <tr data-clan="織田家"><td class="name-col">竹中半兵衛</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">60</span></td><td><span class="stat-val stat-90">99</span></td><td><span class="stat-val stat-80">86</span></td><td class="total-val">327</td><td>白面の軍師・謀略</td></tr>
+          <tr data-clan="織田家"><td class="name-col">黒田官兵衛</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-70">70</span></td><td><span class="stat-val stat-90">96</span></td><td><span class="stat-val stat-90">92</span></td><td class="total-val">346</td><td>如水・軍師</td></tr>
+          <tr data-clan="織田家"><td class="name-col">森長可</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-70">65</span></td><td><span class="stat-val stat-low">57</span></td><td class="total-val">295</td><td>鬼武蔵・猛攻</td></tr>
+          <tr data-clan="織田家"><td class="name-col">佐々成政</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">69</span></td><td class="total-val">310</td><td>先駆け・厳格</td></tr>
+          <tr data-clan="織田家"><td class="name-col">細川藤孝</td><td class="clan-col"><span class="clan-badge clan-oda">織田家</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-80">88</span></td><td class="total-val">323</td><td>連歌・文武両道</td></tr>
+
+          <!-- ===== 武田家 ===== -->
+          <tr data-clan="武田家"><td class="name-col">武田信玄</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-100">100</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-90">96</span></td><td><span class="stat-val stat-90">95</span></td><td class="total-val">380</td><td>風林火山・甲斐の虎</td></tr>
+          <tr data-clan="武田家"><td class="name-col">武田勝頼</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-90">94</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">321</td><td>猛将・騎馬突撃</td></tr>
+          <tr data-clan="武田家"><td class="name-col">山本勘助</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-90">95</span></td><td><span class="stat-val stat-70">76</span></td><td class="total-val">345</td><td>軍師・啄木鳥</td></tr>
+          <tr data-clan="武田家"><td class="name-col">馬場信春</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">328</td><td>不死身の鬼美濃・守備</td></tr>
+          <tr data-clan="武田家"><td class="name-col">山県昌景</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">93</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-70">77</span></td><td><span class="stat-val stat-70">64</span></td><td class="total-val">326</td><td>赤備え・騎馬</td></tr>
+          <tr data-clan="武田家"><td class="name-col">真田幸隆</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-90">95</span></td><td><span class="stat-val stat-80">82</span></td><td class="total-val">343</td><td>謀略・忍び</td></tr>
+          <tr data-clan="武田家"><td class="name-col">真田昌幸</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-90">99</span></td><td><span class="stat-val stat-80">87</span></td><td class="total-val">358</td><td>表裏比興・謀将</td></tr>
+          <tr data-clan="武田家"><td class="name-col">真田信繁（幸村）</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">96</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-low">57</span></td><td class="total-val">338</td><td>日本一の兵・六文銭</td></tr>
+          <tr data-clan="武田家"><td class="name-col">高坂昌信</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-70">75</span></td><td class="total-val">336</td><td>逃げ弾正・断金</td></tr>
+          <tr data-clan="武田家"><td class="name-col">内藤昌豊</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">319</td><td>猛将・正将</td></tr>
+          <tr data-clan="武田家"><td class="name-col">穴山梅雪</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">69</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">73</span></td><td class="total-val">286</td><td>外交・保身</td></tr>
+          <tr data-clan="武田家"><td class="name-col">小山田信茂</td><td class="clan-col"><span class="clan-badge clan-takeda">武田家</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-70">65</span></td><td><span class="stat-val stat-70">60</span></td><td class="total-val">283</td><td>守備・裏切り</td></tr>
+
+          <!-- ===== 上杉家 ===== -->
+          <tr data-clan="上杉家"><td class="name-col">上杉謙信</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-90">98</span></td><td><span class="stat-val stat-100">100</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-70">73</span></td><td class="total-val">361</td><td>軍神・義の将</td></tr>
+          <tr data-clan="上杉家"><td class="name-col">上杉景勝</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-80">80</span></td><td class="total-val">330</td><td>義将・忠義</td></tr>
+          <tr data-clan="上杉家"><td class="name-col">直江兼続</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-70">77</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-90">93</span></td><td class="total-val">346</td><td>愛の将・文武両道</td></tr>
+          <tr data-clan="上杉家"><td class="name-col">柿崎景家</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-low">52</span></td><td class="total-val">297</td><td>猛突・先陣</td></tr>
+          <tr data-clan="上杉家"><td class="name-col">宇佐美定満</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-70">71</span></td><td class="total-val">327</td><td>軍師・水練</td></tr>
+          <tr data-clan="上杉家"><td class="name-col">甘粕景持</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">60</span></td><td class="total-val">306</td><td>猛将・突撃</td></tr>
+          <tr data-clan="上杉家"><td class="name-col">斎藤朝信</td><td class="clan-col"><span class="clan-badge clan-uesugi">上杉家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">314</td><td>武勇・忠義</td></tr>
+
+          <!-- ===== 徳川家 ===== -->
+          <tr data-clan="徳川家"><td class="name-col">徳川家康</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-90">95</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-90">97</span></td><td class="total-val">362</td><td>狸親父・天下人</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">本多忠勝</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-90">98</span></td><td><span class="stat-val stat-70">65</span></td><td><span class="stat-val stat-low">57</span></td><td class="total-val">311</td><td>天下無双・蜻蛉切</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">井伊直政</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-70">77</span></td><td class="total-val">333</td><td>井伊の赤備え・猛将</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">酒井忠次</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">79</span></td><td class="total-val">332</td><td>家康随一・海道一</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">榊原康政</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">77</span></td><td class="total-val">333</td><td>四天王・猛将</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">本多正信</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-70">66</span></td><td><span class="stat-val stat-low">51</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-80">89</span></td><td class="total-val">297</td><td>智謀・腹黒</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">石川数正</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-80">85</span></td><td class="total-val">312</td><td>外交・文官</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">鳥居元忠</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-70">63</span></td><td class="total-val">298</td><td>忠臣・籠城</td></tr>
+          <tr data-clan="徳川家"><td class="name-col">大久保忠世</td><td class="clan-col"><span class="clan-badge clan-tokugawa">徳川家</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">70</span></td><td><span class="stat-val stat-70">65</span></td><td class="total-val">299</td><td>剛勇・忠義</td></tr>
+
+          <!-- ===== 豊臣家 ===== -->
+          <tr data-clan="豊臣家"><td class="name-col">豊臣秀吉</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-70">65</span></td><td><span class="stat-val stat-90">98</span></td><td><span class="stat-val stat-100">100</span></td><td class="total-val">355</td><td>百姓の倅・猿智恵</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">豊臣秀長</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-70">62</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-90">92</span></td><td class="total-val">322</td><td>名臣・補佐</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">石田三成</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-low">47</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-90">99</span></td><td class="total-val">298</td><td>奉行職・几帳面</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">加藤清正</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-90">95</span></td><td><span class="stat-val stat-70">69</span></td><td><span class="stat-val stat-70">72</span></td><td class="total-val">325</td><td>虎退治・七本槍</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">福島正則</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-90">95</span></td><td><span class="stat-val stat-low">55</span></td><td><span class="stat-val stat-low">50</span></td><td class="total-val">284</td><td>猛将・七本槍</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">片桐且元</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-80">85</span></td><td class="total-val">301</td><td>調停・七本槍</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">小西行長</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-80">87</span></td><td class="total-val">320</td><td>商人・南蛮</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">大谷吉継</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-80">83</span></td><td class="total-val">331</td><td>義将・智将</td></tr>
+          <tr data-clan="豊臣家"><td class="name-col">宇喜多秀家</td><td class="clan-col"><span class="clan-badge clan-toyotomi">豊臣家</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-70">74</span></td><td><span class="stat-val stat-70">76</span></td><td class="total-val">317</td><td>豊臣の寵臣・西国</td></tr>
+
+          <!-- ===== 北条家 ===== -->
+          <tr data-clan="北条家"><td class="name-col">北条早雲（伊勢宗瑞）</td><td class="clan-col"><span class="clan-badge clan-hojo">北条家</span></td><td><span class="stat-val stat-90">93</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-90">99</span></td><td><span class="stat-val stat-90">96</span></td><td class="total-val">368</td><td>謀聖・下剋上</td></tr>
+          <tr data-clan="北条家"><td class="name-col">北条氏綱</td><td class="clan-col"><span class="clan-badge clan-hojo">北条家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-90">93</span></td><td class="total-val">353</td><td>明君・関東の雄</td></tr>
+          <tr data-clan="北条家"><td class="name-col">北条氏康</td><td class="clan-col"><span class="clan-badge clan-hojo">北条家</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-90">93</span></td><td><span class="stat-val stat-90">96</span></td><td class="total-val">365</td><td>相模の獅子・名将</td></tr>
+          <tr data-clan="北条家"><td class="name-col">北条氏政</td><td class="clan-col"><span class="clan-badge clan-hojo">北条家</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-80">82</span></td><td class="total-val">319</td><td>二膳・守成</td></tr>
+          <tr data-clan="北条家"><td class="name-col">北条氏直</td><td class="clan-col"><span class="clan-badge clan-hojo">北条家</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">70</span></td><td><span class="stat-val stat-70">75</span></td><td class="total-val">297</td><td>最後の当主・温厚</td></tr>
+          <tr data-clan="北条家"><td class="name-col">風魔小太郎</td><td class="clan-col"><span class="clan-badge clan-hojo">北条家</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-70">60</span></td><td class="total-val">317</td><td>忍頭・謀略</td></tr>
+
+          <!-- ===== 毛利家 ===== -->
+          <tr data-clan="毛利家"><td class="name-col">毛利元就</td><td class="clan-col"><span class="clan-badge clan-mori">毛利家</span></td><td><span class="stat-val stat-90">94</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-100">100</span></td><td><span class="stat-val stat-90">91</span></td><td class="total-val">357</td><td>謀神・三本の矢</td></tr>
+          <tr data-clan="毛利家"><td class="name-col">毛利隆元</td><td class="clan-col"><span class="clan-badge clan-mori">毛利家</span></td><td><span class="stat-val stat-70">74</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-70">73</span></td><td><span class="stat-val stat-80">86</span></td><td class="total-val">301</td><td>仁将・孝行</td></tr>
+          <tr data-clan="毛利家"><td class="name-col">毛利輝元</td><td class="clan-col"><span class="clan-badge clan-mori">毛利家</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-70">67</span></td><td><span class="stat-val stat-70">71</span></td><td><span class="stat-val stat-80">80</span></td><td class="total-val">293</td><td>凡将・西国大老</td></tr>
+          <tr data-clan="毛利家"><td class="name-col">吉川元春</td><td class="clan-col"><span class="clan-badge clan-mori">毛利家</span></td><td><span class="stat-val stat-90">93</span></td><td><span class="stat-val stat-90">93</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-70">73</span></td><td class="total-val">338</td><td>鬼吉川・猛将</td></tr>
+          <tr data-clan="毛利家"><td class="name-col">小早川隆景</td><td class="clan-col"><span class="clan-badge clan-mori">毛利家</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-70">77</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-80">88</span></td><td class="total-val">345</td><td>智将・水軍</td></tr>
+          <tr data-clan="毛利家"><td class="name-col">乃美宗勝</td><td class="clan-col"><span class="clan-badge clan-mori">毛利家</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-70">65</span></td><td class="total-val">296</td><td>水軍・勇将</td></tr>
+
+          <!-- ===== 島津家 ===== -->
+          <tr data-clan="島津家"><td class="name-col">島津義久</td><td class="clan-col"><span class="clan-badge clan-shimazu">島津家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-80">81</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-80">88</span></td><td class="total-val">348</td><td>外交・知将</td></tr>
+          <tr data-clan="島津家"><td class="name-col">島津義弘</td><td class="clan-col"><span class="clan-badge clan-shimazu">島津家</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-90">98</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-70">73</span></td><td class="total-val">351</td><td>鬼島津・猛将</td></tr>
+          <tr data-clan="島津家"><td class="name-col">島津歳久</td><td class="clan-col"><span class="clan-badge clan-shimazu">島津家</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-70">77</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-70">78</span></td><td class="total-val">329</td><td>謀将・智謀</td></tr>
+          <tr data-clan="島津家"><td class="name-col">島津家久</td><td class="clan-col"><span class="clan-badge clan-shimazu">島津家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-90">94</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-70">65</span></td><td class="total-val">336</td><td>釣り野伏・戦術家</td></tr>
+          <tr data-clan="島津家"><td class="name-col">島津貴久</td><td class="clan-col"><span class="clan-badge clan-shimazu">島津家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-80">85</span></td><td class="total-val">332</td><td>薩摩の覇者・統治</td></tr>
+
+          <!-- ===== 今川家 ===== -->
+          <tr data-clan="今川家"><td class="name-col">今川義元</td><td class="clan-col"><span class="clan-badge clan-imagawa">今川家</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-90">97</span></td><td class="total-val">351</td><td>海道一の弓取り・名将</td></tr>
+          <tr data-clan="今川家"><td class="name-col">太原雪斎</td><td class="clan-col"><span class="clan-badge clan-imagawa">今川家</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-70">67</span></td><td><span class="stat-val stat-90">98</span></td><td><span class="stat-val stat-90">93</span></td><td class="total-val">343</td><td>名僧・軍師</td></tr>
+          <tr data-clan="今川家"><td class="name-col">岡部元信</td><td class="clan-col"><span class="clan-badge clan-imagawa">今川家</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">314</td><td>忠義・猛将</td></tr>
+          <tr data-clan="今川家"><td class="name-col">今川氏真</td><td class="clan-col"><span class="clan-badge clan-imagawa">今川家</span></td><td><span class="stat-val stat-low">52</span></td><td><span class="stat-val stat-low">50</span></td><td><span class="stat-val stat-low">55</span></td><td><span class="stat-val stat-70">68</span></td><td class="total-val">225</td><td>蹴鞠・凡将</td></tr>
+
+          <!-- ===== 伊達家 ===== -->
+          <tr data-clan="伊達家"><td class="name-col">伊達政宗</td><td class="clan-col"><span class="clan-badge clan-date">伊達家</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-80">89</span></td><td class="total-val">366</td><td>独眼竜・奥州の覇者</td></tr>
+          <tr data-clan="伊達家"><td class="name-col">伊達輝宗</td><td class="clan-col"><span class="clan-badge clan-date">伊達家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-80">81</span></td><td><span class="stat-val stat-80">83</span></td><td class="total-val">327</td><td>名君・政宗の父</td></tr>
+          <tr data-clan="伊達家"><td class="name-col">片倉景綱</td><td class="clan-col"><span class="clan-badge clan-date">伊達家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-90">93</span></td><td><span class="stat-val stat-70">77</span></td><td class="total-val">335</td><td>片倉小十郎・謀臣</td></tr>
+          <tr data-clan="伊達家"><td class="name-col">伊達成実</td><td class="clan-col"><span class="clan-badge clan-date">伊達家</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-70">63</span></td><td class="total-val">317</td><td>猛将・伊達の猛虎</td></tr>
+
+          <!-- ===== その他 ===== -->
+          <tr data-clan="その他"><td class="name-col">三好長慶</td><td class="clan-col"><span class="clan-badge clan-other">三好家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-90">90</span></td><td><span class="stat-val stat-90">93</span></td><td class="total-val">356</td><td>三好筑前・天下人</td></tr>
+          <tr data-clan="その他"><td class="name-col">松永久秀</td><td class="clan-col"><span class="clan-badge clan-other">松永家</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">77</span></td><td><span class="stat-val stat-90">96</span></td><td><span class="stat-val stat-80">88</span></td><td class="total-val">343</td><td>梟雄・茶の湯</td></tr>
+          <tr data-clan="その他"><td class="name-col">尼子経久</td><td class="clan-col"><span class="clan-badge clan-other">尼子家</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-80">89</span></td><td class="total-val">358</td><td>謀聖・陰徳</td></tr>
+          <tr data-clan="その他"><td class="name-col">山中鹿介</td><td class="clan-col"><span class="clan-badge clan-other">尼子家</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-90">94</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-low">57</span></td><td class="total-val">315</td><td>七難八苦・忠義</td></tr>
+          <tr data-clan="その他"><td class="name-col">宇喜多直家</td><td class="clan-col"><span class="clan-badge clan-other">宇喜多家</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-80">82</span></td><td class="total-val">344</td><td>梟雄・謀略</td></tr>
+          <tr data-clan="その他"><td class="name-col">龍造寺隆信</td><td class="clan-col"><span class="clan-badge clan-other">龍造寺家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-70">78</span></td><td class="total-val">337</td><td>肥前の熊・猛将</td></tr>
+          <tr data-clan="その他"><td class="name-col">大友宗麟</td><td class="clan-col"><span class="clan-badge clan-other">大友家</span></td><td><span class="stat-val stat-70">76</span></td><td><span class="stat-val stat-70">73</span></td><td><span class="stat-val stat-70">79</span></td><td><span class="stat-val stat-90">90</span></td><td class="total-val">318</td><td>南蛮文化・九州</td></tr>
+          <tr data-clan="その他"><td class="name-col">長宗我部元親</td><td class="clan-col"><span class="clan-badge clan-other">長宗我部家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-80">87</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-80">84</span></td><td class="total-val">350</td><td>土佐の出来人・姫若子</td></tr>
+          <tr data-clan="その他"><td class="name-col">斎藤道三</td><td class="clan-col"><span class="clan-badge clan-other">斎藤家</span></td><td><span class="stat-val stat-90">91</span></td><td><span class="stat-val stat-80">83</span></td><td><span class="stat-val stat-90">97</span></td><td><span class="stat-val stat-90">90</span></td><td class="total-val">361</td><td>蝮・下剋上</td></tr>
+          <tr data-clan="その他"><td class="name-col">斎藤義龍</td><td class="clan-col"><span class="clan-badge clan-other">斎藤家</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-80">88</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">70</span></td><td class="total-val">318</td><td>大男・猛将</td></tr>
+          <tr data-clan="その他"><td class="name-col">浅井長政</td><td class="clan-col"><span class="clan-badge clan-other">浅井家</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-80">85</span></td><td><span class="stat-val stat-70">78</span></td><td><span class="stat-val stat-80">80</span></td><td class="total-val">329</td><td>義将・近江の雄</td></tr>
+          <tr data-clan="その他"><td class="name-col">朝倉義景</td><td class="clan-col"><span class="clan-badge clan-other">朝倉家</span></td><td><span class="stat-val stat-70">60</span></td><td><span class="stat-val stat-low">55</span></td><td><span class="stat-val stat-70">62</span></td><td><span class="stat-val stat-70">74</span></td><td class="total-val">251</td><td>風流・凡将</td></tr>
+          <tr data-clan="その他"><td class="name-col">六角義賢</td><td class="clan-col"><span class="clan-badge clan-other">六角家</span></td><td><span class="stat-val stat-70">74</span></td><td><span class="stat-val stat-70">68</span></td><td><span class="stat-val stat-70">70</span></td><td><span class="stat-val stat-70">78</span></td><td class="total-val">290</td><td>近江守護・統治</td></tr>
+          <tr data-clan="その他"><td class="name-col">一条兼定</td><td class="clan-col"><span class="clan-badge clan-other">一条家</span></td><td><span class="stat-val stat-low">54</span></td><td><span class="stat-val stat-low">52</span></td><td><span class="stat-val stat-low">46</span></td><td><span class="stat-val stat-70">62</span></td><td class="total-val">214</td><td>凡将・暗君</td></tr>
+          <tr data-clan="その他"><td class="name-col">毛利勝永</td><td class="clan-col"><span class="clan-badge clan-other">毛利家臣</span></td><td><span class="stat-val stat-80">86</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-70">72</span></td><td><span class="stat-val stat-70">60</span></td><td class="total-val">307</td><td>大坂の陣・猛将</td></tr>
+          <tr data-clan="その他"><td class="name-col">後藤基次（又兵衛）</td><td class="clan-col"><span class="clan-badge clan-other">牢人</span></td><td><span class="stat-val stat-80">89</span></td><td><span class="stat-val stat-90">92</span></td><td><span class="stat-val stat-70">75</span></td><td><span class="stat-val stat-70">60</span></td><td class="total-val">316</td><td>大坂の陣・豪傑</td></tr>
+          <tr data-clan="その他"><td class="name-col">九鬼嘉隆</td><td class="clan-col"><span class="clan-badge clan-other">九鬼家</span></td><td><span class="stat-val stat-80">84</span></td><td><span class="stat-val stat-80">80</span></td><td><span class="stat-val stat-80">82</span></td><td><span class="stat-val stat-70">72</span></td><td class="total-val">318</td><td>水軍・鉄甲船</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="../index.html">トップ</a>
+    <a href="overview.html">ゲーム概要</a>
+    <a href="systems.html">システム解説</a>
+    <a href="scenarios.html">シナリオ一覧</a>
+    <a href="busho.html">武将DB</a>
+    <a href="traits.html">武将特性</a>
+    <a href="guide.html">攻略ガイド</a>
+    <a href="editions.html">エディション</a>
+  </div>
+  <p>本サイトは攻略情報まとめサイトです。「信長の野望・新生 with パワーアップキット」は
+    コーエーテクモゲームスの著作物です。</p>
+  <p class="footer-copy">© 2025 信長の野望・新生PK 攻略情報まとめ</p>
+</footer>
+
+<script>
+let currentFilter = 'all';
+let currentSort = { col: -1, asc: true };
+
+function filterTable() {
+  const query = document.getElementById('searchBox').value.toLowerCase();
+  const rows = document.querySelectorAll('#bushoTbody tr');
+  let count = 0;
+  rows.forEach(row => {
+    const name = row.cells[0].textContent.toLowerCase();
+    const clan = row.dataset.clan;
+    const matchSearch = !query || name.includes(query) || clan.includes(query);
+    const matchFilter = currentFilter === 'all' || clan === currentFilter;
+    if (matchSearch && matchFilter) {
+      row.classList.remove('hidden');
+      count++;
+    } else {
+      row.classList.add('hidden');
+    }
+  });
+  document.getElementById('resultCount').textContent = `${count} 件表示中`;
+}
+
+function setFilter(clan, btn) {
+  currentFilter = clan;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('searchBox').value = '';
+  filterTable();
+}
+
+function sortTable(colIdx) {
+  const tbody = document.getElementById('bushoTbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const ths = document.querySelectorAll('.busho-table thead th');
+
+  if (currentSort.col === colIdx) {
+    currentSort.asc = !currentSort.asc;
+  } else {
+    currentSort.col = colIdx;
+    currentSort.asc = false; // 数値は最初降順
+    if (colIdx <= 1) currentSort.asc = true; // 文字列は昇順
+  }
+
+  ths.forEach((th, i) => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (i === colIdx) th.classList.add(currentSort.asc ? 'sort-asc' : 'sort-desc');
+  });
+
+  rows.sort((a, b) => {
+    const aVal = a.cells[colIdx]?.textContent.trim() || '';
+    const bVal = b.cells[colIdx]?.textContent.trim() || '';
+    const aNum = parseFloat(aVal);
+    const bNum = parseFloat(bVal);
+    let cmp;
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      cmp = aNum - bNum;
+    } else {
+      cmp = aVal.localeCompare(bVal, 'ja');
+    }
+    return currentSort.asc ? cmp : -cmp;
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+  filterTable();
+}
+
+// 初期表示
+window.onload = () => filterTable();
+</script>
+</body>
+</html>
